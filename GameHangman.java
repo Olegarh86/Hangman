@@ -6,57 +6,61 @@ import java.util.Random;
 import java.util.Scanner;
 
 public class GameHangman {
-    private final ArrayList<String> WORDS = new ArrayList<>();
+    private static final ArrayList<String> WORDS = new ArrayList<>();
     private static final String STAR = "*";
     static GameHangman game;
-    public String word = null;
-    private String mask = null;
-    private static int count = 6;
-    private static StringBuilder sb;
+    public String secretWord;
+    private String mask;
+    private static int countOfMistakes = 6;
+    private static StringBuilder unnecessaryLetters;
 
-    public GameHangman() {
-        count = 6;
-        sb = new StringBuilder();
+    public GameHangman(String path) throws IOException {
+        countOfMistakes = 6;
+        unnecessaryLetters = new StringBuilder();
+        initLibrary(path);
     }
 
     public static void main(String[] args) throws IOException {
-        System.out.println("Я загадаю существительное в именительном падеже, а ты попробуешь его угадать, у тебя на это будет 6 попыток. \n" +
-                "Поиграем? Нажми \"Enter\" для начала игры или \"Пробел + Enter\" для выхода");
+        System.out.println("Я загадаю существительное в именительном падеже, а ты попробуешь его угадать, у тебя на это будет " + countOfMistakes + " попыток.");
         while (startGame()) {
-            game = new GameHangman();
-            game.initLibrary("src/Hangman/Words");
-            game.word = game.chooseWord(game.WORDS);
-            game.mask = game.maskWord(game.word);
+            game = new GameHangman("src/Hangman/Words");
 
-            while (count > 0) {
+            game.secretWord = game.chooseWord();
+            game.mask = game.maskWord(game.secretWord);
+
+            while (checkAbilityToMove()) {
                 String letter = enterLetter();
                 if (game.validationEnterLetter(letter)) {
-                    if (game.checkLetter(game.word, letter)) {
-                        System.out.println("Есть такая буква в этом слове!");
-                        sb.append(letter.toUpperCase()).append(" ");
-                        game.mask = game.openLetter(game.word, game.mask, letter);
-                        if (!game.gameOver()) {
-                            System.out.println("Ты выиграл, молодец! правильное слово \"" + game.word + "\" \n" +
-                                    "(#^_^#)\n" +
-                                    "Сыграем ещё раз?\n" +
-                                    "Нажми на кнопку \"Enter\" для начала игры или \"Пробел + Enter\" если нет желания играть");
-                            break;
+                    if (!game.checkLetterRepeat(letter)) {
+                        if (game.checkContainsLetterInTheWord(game.secretWord, letter)) {
+                            game.theWordContainsTheLetter(game.secretWord, game.mask, letter);
+                            if (!game.gameOver()) {
+                                game.messageYouWin(game.secretWord);
+                                break;
+                            }
+                        } else {
+                            game.wordNotContainsTheLetter();
+                            if (checkAbilityToMove()) {
+                            } else {
+                                game.messageYouLoss(game.secretWord);
+                            }
                         }
-                    } else {
-                        if (sb.toString().contains(letter)) {
-                            System.out.println("Была уже такая буква, введи другую");
+                    }else {
+                        if (unnecessaryLetters.toString().contains(letter)) {
+                            System.out.println("Ты уже вводил такую букву, введи другую");
                             continue;
                         }
-                        sb.append(letter.toUpperCase()).append(" ");
-                        countOfMoves();
+                        unnecessaryLetters.append(letter.toUpperCase()).append(" ");
+                        checkAbilityToMove();
                     }
-                } else System.out.println("Не, ну ты вообще читаешь какие символы нужно вводить?! Пробуй заново, у тебя не получилось");
+                } else System.out.println("Не, ну ты вообще читаешь какие символы нужно вводить?! Попробуй заново, у тебя получится, я верю в тебя!");
             }
         }
         System.out.println("Запусти меня заново как появится желание сыграть, я буду ждать!");
     }
 
-    private static boolean startGame() throws IOException {
+    private static boolean startGame() {
+        System.out.println("Поиграем? Нажми \"Enter\" для начала игры или \"Пробел + Enter\" для выхода");
         Scanner sc = new Scanner(System.in);
         boolean isExit = true;
         while (isExit) {
@@ -77,7 +81,7 @@ public class GameHangman {
         return random.nextInt(quantity);
     }
 
-    private void initLibrary(String path) throws IOException {
+    private static void initLibrary(String path) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
             while (reader.ready()) {
                 WORDS.add(reader.readLine());
@@ -85,7 +89,7 @@ public class GameHangman {
         }
     }
 
-    private String chooseWord(ArrayList<String> WORDS) {
+    private String chooseWord() {
         return WORDS.get(getRandom(WORDS.size())).toUpperCase();
     }
 
@@ -94,8 +98,8 @@ public class GameHangman {
     }
 
     private static String enterLetter() {
-        System.out.println("Отгадай слово из " + game.word.length() + " букв: " + game.mask);
-        System.out.println("Ты уже использовал буквы: " + sb);
+        System.out.println("Отгадай слово из " + game.secretWord.length() + " букв: " + game.mask);
+        System.out.println("Ты уже использовал буквы: " + unnecessaryLetters);
         System.out.println("Введи 1 (одну) из 33 (тридцати трёх) букв русского языка, которая содержится в загаданном слове: ");
         Scanner scanner = new Scanner(System.in);
         return  scanner.nextLine().toUpperCase();
@@ -105,28 +109,34 @@ public class GameHangman {
         return letter.matches("[А-Я]{1}");
     }
 
-    private boolean checkLetter(String word, String letter) {
-        if (sb.toString().contains(letter)) {
-            return false;
+    private boolean checkLetterRepeat(String letter) {
+        if (!unnecessaryLetters.toString().contains(letter)) {
+            unnecessaryLetters.append(letter.toUpperCase()).append(" ");
+        } else {
+            return true;
         }
+        return false;
+    }
+
+    private boolean checkContainsLetterInTheWord(String word, String letter) {
         return word.contains(letter);
     }
 
-    private static void countOfMoves() throws IOException {
-        count--;
-        if (count > 0) {
-            System.out.println("Нет такой буквы в этом слове, осталось " + count + " ошибок");
-            drawHangman(count);
-        } else {
-            System.out.println("Нет такой буквы в этом слове. Ты не угадал слово \"" + game.word + "\"");
-            drawHangman(count);
-            System.out.println("Сыграем ещё раз?\n" +
-                    "Нажми на кнопку \"Enter\" для начала игры или \"Пробел + Enter\" если нет желания играть");
-            count--;
-        }
+    private void theWordContainsTheLetter(String secretWord, String mask, String letter) {
+        System.out.println("Есть такая буква в этом слове!");
+        game.mask = game.openLetterInTheMask(secretWord, mask, letter);
     }
 
-    private String openLetter(String word, String mask, String letter) {
+    private void wordNotContainsTheLetter() {
+        countOfMistakes--;
+        drawHangman(countOfMistakes);
+    }
+
+    private static boolean checkAbilityToMove() {
+        return countOfMistakes > 0;
+    }
+
+    private String openLetterInTheMask(String word, String mask, String letter) {
         char[] wordCharArray = word.toCharArray();
         char[] maskCharArray = mask.toCharArray();
         char symbol = letter.charAt(0);
@@ -139,13 +149,23 @@ public class GameHangman {
     }
 
     private boolean gameOver() {
-        return game.mask.contains(STAR);
+        return (game.mask.contains(STAR) && checkAbilityToMove());
+    }
+
+    private void messageYouWin(String word) {
+        System.out.println("Ты выиграл, молодец! правильное слово \"" + word + "\" \n" +
+                "(#^_^#)\n");
+    }
+
+    private void messageYouLoss(String secretWord) {
+        System.out.println("Ты проиграл, было загадано слово \"" + secretWord + "\"");
     }
 
     private static void drawHangman(int count) {
         switch (count) {
             case (5) :
-                System.out.println("  ||=========\n" +
+                System.out.println("Нет такой буквы в этом слове, осталось " + countOfMistakes + " ошибок\n" +
+                        "  ||=========\n" +
                                    "  ||        |\n" +
                                    "  ||        |  \n" +
                                    "  ||       (>L<)\n" +
@@ -158,7 +178,8 @@ public class GameHangman {
                                    "__||_______________");
                 break;
             case (4) :
-                System.out.println("  ||=========\n" +
+                System.out.println("Нет такой буквы в этом слове, осталось " + countOfMistakes + " ошибок\n" +
+                        "  ||=========\n" +
                         "  ||        |\n" +
                         "  ||        |  \n" +
                         "  ||       (>L<)\n" +
@@ -171,7 +192,8 @@ public class GameHangman {
                         "__||_______________");
                 break;
             case (3) :
-                System.out.println("  ||=========\n" +
+                System.out.println("Нет такой буквы в этом слове, осталось " + countOfMistakes + " ошибок\n" +
+                        "  ||=========\n" +
                         "  ||        |\n" +
                         "  ||        |  \n" +
                         "  ||       (>L<)\n" +
@@ -184,7 +206,8 @@ public class GameHangman {
                         "__||_______________");
                 break;
             case (2) :
-                System.out.println("  ||=========\n" +
+                System.out.println("Нет такой буквы в этом слове, осталось " + countOfMistakes + " ошибок\n" +
+                        "  ||=========\n" +
                         "  ||        |\n" +
                         "  ||        |  \n" +
                         "  ||       (>L<)\n" +
@@ -197,7 +220,8 @@ public class GameHangman {
                         "__||_______________");
                 break;
             case (1) :
-                System.out.println("  ||=========\n" +
+                System.out.println("Нет такой буквы в этом слове, осталось " + countOfMistakes + " ошибок\n" +
+                        "  ||=========\n" +
                         "  ||        |\n" +
                         "  ||        |  \n" +
                         "  ||       (>L<)\n" +
@@ -210,7 +234,8 @@ public class GameHangman {
                         "__||_______________");
                 break;
             case (0) :
-                System.out.println("  ||=========\n" +
+                System.out.println("Нет такой буквы в этом слове, осталось " + countOfMistakes + " ошибок\n" +
+                        "  ||=========\n" +
                         "  ||        |\n" +
                         "  ||        |  \n" +
                         "  ||       (+L+)\n" +
