@@ -7,9 +7,10 @@ import java.util.Scanner;
 
 public class GameHangman {
     private static final ArrayList<String> WORDS = new ArrayList<>();
+    private static final String PATH = "src/Hangman/Words";
     private static final String STAR = "*";
-    static GameHangman game;
-    public String secretWord;
+    private static GameHangman game;
+    private String secretWord;
     private String mask;
     private static int countOfMistakes = 6;
     private static StringBuilder unnecessaryLetters;
@@ -23,8 +24,7 @@ public class GameHangman {
     public static void main(String[] args) throws IOException {
         System.out.println("Я загадаю существительное в именительном падеже, а ты попробуешь его угадать, у тебя на это будет " + countOfMistakes + " попыток.");
         while (startGame()) {
-            game = new GameHangman("src/Hangman/Words");
-
+            game = new GameHangman(PATH);
             game.secretWord = game.chooseWord();
             game.mask = game.maskWord(game.secretWord);
 
